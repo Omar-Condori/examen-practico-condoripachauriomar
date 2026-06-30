@@ -113,6 +113,6 @@ if __name__ == "__main__":
     reporte = parsear_log_web(ruta_log)
     
     if reporte:
-        with open('lab1/reporte_web.json', 'w', encoding='utf-8') as f:
+        with open('reporte_web.json', 'w', encoding='utf-8') as f:
             json.dump(reporte, f, indent=4, ensure_ascii=False)
-        print("\nReporte generado exitosamente en lab1/reporte_web.json")
+        print("\nReporte generado exitosamente en reporte_web.json")
