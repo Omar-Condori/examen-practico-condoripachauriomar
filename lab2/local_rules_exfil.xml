@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<group name="local,exfiltration,">
+<group name="local,exfiltration">
   <!-- Regla para detección de actividad sospechosa fuera de horario laboral -->
   <rule id="100002" level="12">
     <if_sid>5715</if_sid>
@@ -9,7 +9,7 @@
     <mitre>
       <id>T1048</id>
     </mitre>
-    <group>exfiltration,</group>
+    <group>exfiltration</group>
   </rule>
 
   <!-- Regla para detección de archivos grandes (simplificada) -->
@@ -17,6 +17,6 @@
     <category>ossec</category>
     <decoded_as>ossec</decoded_as>
     <description>Archivo grande modificado o accedido - $(file)</description>
-    <group>exfiltration,</group>
+    <group>exfiltration</group>
   </rule>
 </group>
