@@ -1,65 +1,102 @@
 import re
 import json
-from collections import defaultdict, Counter
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 def parsear_log_web(ruta_archivo):
+    # Patrón para Combined Log Format de Apache
     patron = re.compile(
         r'(?P<ip>\d+\.\d+\.\d+\.\d+)\s+\S+\s+\S+\s+\[(?P<timestamp>[^\]]+)\]\s+"(?P<metodo>\S+)\s+(?P<ruta>\S+)\s+\S+"\s+(?P<status>\d+)\s+(?P<bytes>\S+)'
     )
-    escaneos = defaultdict(int)
-    sqli = defaultdict(list)
+    
+    # Almacenar peticiones por IP y timestamp
+    peticiones_por_ip = defaultdict(list)
+    errores_por_ip = defaultdict(int)
+    sqli_detectados = []
+    escaneos_detectados = []
+    
     reporte = {
+        "fecha_analisis": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_peticiones": 0,
-        "codigos_status": {},
+        "errores_4xx_5xx": {},
         "escaneos_detectados": [],
-        "sqli_detectados": [],
-        "alertas": []
+        "sqli_detectados": []
     }
 
+    # Patrones de SQL Injection
     patrones_sqli = [
-        r"('|\"|;|--|#|/\*|\*/|UNION|SELECT|INSERT|DELETE|DROP|OR\s+1=1|AND\s+1=1)",
-        r"(\.\./|\.\.\\|/etc/passwd|/bin/sh)"
+        r"UNION", r"SELECT", r"--", r"OR\s+1=1", r"'", r";", r"DROP", r"INSERT"
     ]
 
     try:
-        with open(ruta_archivo, 'r', encoding='utf-8') as f:
+        with open(ruta_archivo, 'r', encoding='utf-8', errors='ignore') as f:
             for linea in f:
                 match = patron.match(linea.strip())
                 if match:
                     datos = match.groupdict()
                     reporte["total_peticiones"] += 1
                     
+                    ip = datos['ip']
                     status = datos['status']
-                    reporte["codigos_status"][status] = reporte["codigos_status"].get(status, 0) + 1
+                    ruta = datos['ruta']
                     
-                    if status in ['404', '403']:
-                        escaneos[datos['ip']] += 1
-                        if escaneos[datos['ip']] >= 10:
-                            alerta_escaneo = {
-                                "tipo": "ESCANNER",
-                                "ip": datos['ip'],
-                                "peticiones": escaneos[datos['ip']]
-                            }
-                            if alerta_escaneo not in reporte["alertas"]:
-                                reporte["alertas"].append(alerta_escaneo)
-                                print(f"[ALERTA] Escaneo detectado desde {datos['ip']} ({escaneos[datos['ip']]} peticiones)")
+                    # Parsear timestamp
+                    try:
+                        ts_str = datos['timestamp'].split()[0]
+                        ts = datetime.strptime(ts_str, "%d/%b/%Y:%H:%M:%S")
+                    except:
+                        ts = datetime.now()
                     
+                    # Almacenar petición
+                    peticiones_por_ip[ip].append({
+                        "timestamp": ts,
+                        "ruta": ruta,
+                        "status": status
+                    })
+                    
+                    # Contar errores 4xx y 5xx
+                    if status.startswith('4') or status.startswith('5'):
+                        errores_por_ip[ip] += 1
+                    
+                    # Detectar SQL Injection
                     for patron_sqli in patrones_sqli:
-                        if re.search(patron_sqli, datos['ruta'], re.IGNORECASE):
-                            sqli[datos['ip']].append(datos)
-                            alerta_sqli = {
-                                "tipo": "SQL_INJECTION",
-                                "ip": datos['ip'],
-                                "ruta": datos['ruta'],
-                                "timestamp": datos['timestamp']
-                            }
-                            if alerta_sqli not in reporte["alertas"]:
-                                reporte["alertas"].append(alerta_sqli)
-                                print(f"[ALERTA] SQL Injection detectado desde {datos['ip']} en ruta {datos['ruta']}")
+                        if re.search(patron_sqli, ruta, re.IGNORECASE):
+                            sqli_detectados.append({
+                                "ip": ip,
+                                "ruta": ruta,
+                                "timestamp": ts_str
+                            })
+                            print(f"[ALERTA] SQL Injection detectado desde {ip} en ruta: {ruta}")
                             break
 
-        reporte["escaneos_detectados"] = [{"ip": ip, "peticiones": cnt} for ip, cnt in escaneos.items() if cnt >= 10]
-        reporte["sqli_detectados"] = [{"ip": ip, "intentos": len(intentos)} for ip, intentos in sqli.items()]
+        # Detectar escaneos (>20 rutas distintas en <60 segundos)
+        for ip, peticiones in peticiones_por_ip.items():
+            # Ordenar peticiones por timestamp
+            peticiones_ordenadas = sorted(peticiones, key=lambda x: x["timestamp"])
+            
+            for i in range(len(peticiones_ordenadas)):
+                ventana = []
+                for j in range(i, len(peticiones_ordenadas)):
+                    if peticiones_ordenadas[j]["timestamp"] - peticiones_ordenadas[i]["timestamp"] <= timedelta(seconds=60):
+                        ventana.append(peticiones_ordenadas[j])
+                    else:
+                        break
+                
+                # Contar rutas distintas en la ventana
+                rutas_distintas = set(p["ruta"] for p in ventana)
+                if len(rutas_distintas) > 20:
+                    escaneos_detectados.append({
+                        "ip": ip,
+                        "peticiones_60s": len(ventana),
+                        "rutas_distintas": len(rutas_distintas)
+                    })
+                    print(f"[ALERTA] Escaneo detectado desde {ip}: {len(rutas_distintas)} rutas distintas en 60 segundos")
+                    break
+
+        # Preparar reporte
+        reporte["errores_4xx_5xx"] = dict(errores_por_ip)
+        reporte["escaneos_detectados"] = escaneos_detectados
+        reporte["sqli_detectados"] = sqli_detectados
 
         return reporte
     except FileNotFoundError:
@@ -69,13 +106,13 @@ def parsear_log_web(ruta_archivo):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print("Uso: python analizar_web.py <ruta_al_log_web>")
+        print("Uso: python analizar_web.py lab1/access.log")
         sys.exit(1)
     
     ruta_log = sys.argv[1]
     reporte = parsear_log_web(ruta_log)
     
     if reporte:
-        with open('reporte_web.json', 'w', encoding='utf-8') as f:
+        with open('lab1/reporte_web.json', 'w', encoding='utf-8') as f:
             json.dump(reporte, f, indent=4, ensure_ascii=False)
-        print("Reporte generado exitosamente en reporte_web.json")
+        print("\nReporte generado exitosamente en lab1/reporte_web.json")

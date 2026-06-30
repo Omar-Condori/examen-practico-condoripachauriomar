@@ -1,56 +1,56 @@
 import re
 import json
-from collections import defaultdict, Counter
+from collections import defaultdict
+from datetime import datetime
 
 def parsear_log_ssh(ruta_archivo):
+    # Patrón para parsear líneas de auth.log
     patron = re.compile(
         r'(?P<mes>\w+)\s+(?P<dia>\d+)\s+(?P<hora>\d+:\d+:\d+)\s+(?P<host>\S+)\s+sshd\[(?P<pid>\d+)\]:\s+(?P<mensaje>.*)'
     )
-    intentos_bruteforce = defaultdict(list)
-    logs_procesados = []
+    
+    intentos_por_ip = defaultdict(int)
+    total_intentos_fallidos = 0
     reporte = {
-        "total_logs": 0,
-        "intentos_fallidos": 0,
-        "autenticaciones_exitosas": 0,
-        "ips_mas_frecuentes": [],
-        "alertas": []
+        "fecha_analisis": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "total_intentos_fallidos": 0,
+        "ips_sospechosas": []
     }
 
     try:
-        with open(ruta_archivo, 'r', encoding='utf-8') as f:
+        with open(ruta_archivo, 'r', encoding='utf-8', errors='ignore') as f:
             for linea in f:
                 match = patron.match(linea.strip())
                 if match:
                     datos = match.groupdict()
-                    reporte["total_logs"] += 1
-                    logs_procesados.append(datos)
                     
                     if 'Failed password' in datos['mensaje']:
-                        reporte["intentos_fallidos"] += 1
+                        total_intentos_fallidos += 1
                         ip_match = re.search(r'from (\d+\.\d+\.\d+\.\d+)', datos['mensaje'])
                         if ip_match:
                             ip = ip_match.group(1)
-                            intentos_bruteforce[ip].append(datos)
-                            
-                            if len(intentos_bruteforce[ip]) >= 5:
-                                alerta = {
-                                    "tipo": "BRUTE_FORCE",
-                                    "ip": ip,
-                                    "intentos": len(intentos_bruteforce[ip]),
-                                    "timestamp": f"{datos['mes']} {datos['dia']} {datos['hora']}"
-                                }
-                                if alerta not in reporte["alertas"]:
-                                    reporte["alertas"].append(alerta)
-                                    print(f"[ALERTA] Brute force detectado desde {ip} ({len(intentos_bruteforce[ip])} intentos)")
-                    
-                    elif 'Accepted password' in datos['mensaje'] or 'Accepted publickey' in datos['mensaje']:
-                        reporte["autenticaciones_exitosas"] += 1
+                            intentos_por_ip[ip] += 1
 
-        # Calcular IPs más frecuentes
-        conteo_ips = Counter()
-        for ip in intentos_bruteforce:
-            conteo_ips[ip] = len(intentos_bruteforce[ip])
-        reporte["ips_mas_frecuentes"] = [{"ip": ip, "intentos": cnt} for ip, cnt in conteo_ips.most_common(10)]
+        # Obtener top 10 IPs y generar alertas
+        top_ips = sorted(intentos_por_ip.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        for ip, intentos in top_ips:
+            es_alerta = intentos >= 50
+            if es_alerta:
+                print(f"[ALERTA] IP: {ip} — {intentos} intentos fallidos — Posible ataque de fuerza bruta")
+            
+            reporte["ips_sospechosas"].append({
+                "ip": ip,
+                "intentos": intentos,
+                "alerta": es_alerta
+            })
+        
+        reporte["total_intentos_fallidos"] = total_intentos_fallidos
+        
+        # Imprimir ranking top 10
+        print("\nRanking de IPs con más intentos fallidos:")
+        for i, (ip, intentos) in enumerate(top_ips, 1):
+            print(f"{i}. {ip} — {intentos} intentos")
 
         return reporte
     except FileNotFoundError:
@@ -60,13 +60,13 @@ def parsear_log_ssh(ruta_archivo):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 2:
-        print("Uso: python analizar_ssh.py <ruta_al_log_ssh>")
+        print("Uso: python analizar_ssh.py lab1/auth.log")
         sys.exit(1)
     
     ruta_log = sys.argv[1]
     reporte = parsear_log_ssh(ruta_log)
     
     if reporte:
-        with open('reporte_ssh.json', 'w', encoding='utf-8') as f:
+        with open('lab1/reporte_ssh.json', 'w', encoding='utf-8') as f:
             json.dump(reporte, f, indent=4, ensure_ascii=False)
-        print("Reporte generado exitosamente en reporte_ssh.json")
+        print("\nReporte generado exitosamente en lab1/reporte_ssh.json")
