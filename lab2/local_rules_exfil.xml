@@ -1,33 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <group name="local,exfiltration,">
-
-  <!-- 
-    Regla compuesta para detección de exfiltración de datos:
-    1. Se dispara cuando se detecta transferencia de datos saliente superior a 500 MB en una sola conexión
-    2. Y se correlaciona con un login exitoso previo fuera del horario laboral (entre 22:00 y 06:00)
-  -->
-  <rule id="100002" level="14">
-    <!-- Primera condición: transferencia de datos > 500 MB -->
-    <decoded_as>json</decoded_as>
-    <field name="event.type">^file$</field>
-    <field name="file.size" type="int">^524288000$|^[5-9][0-9]{8,}$|^[1-9][0-9]{9,}$</field> <!-- > 500 MB -->
-    <field name="direction">^outgoing$|^saliente$</field>
-    <!-- Segunda condición: login exitoso previo fuera de horario laboral -->
-    <if_sid>100003</if_sid>
-    <same_source_ip />
-    <description>Exfiltración de datos crítica: Archivo $(file.name) de $(file.size) bytes transferido desde $(srcip) fuera del horario laboral</description>
-    <mitre>
-      <id>T1048</id>
-    </mitre>
-    <group>exfiltration,critical,</group>
-  </rule>
-
-  <!-- Regla auxiliar para detectar logins exitosos fuera del horario laboral (22:00 - 06:00) -->
-  <rule id="100003" level="5">
+  <!-- Regla para detección de actividad sospechosa fuera de horario laboral -->
+  <rule id="100002" level="12">
     <if_sid>5715</if_sid>
     <hour>22-23,0-5</hour>
     <same_source_ip />
-    <description>Login SSH exitoso fuera del horario laboral desde $(srcip)</description>
+    <description>Login SSH exitoso fuera del horario laboral desde $(srcip) - posible exfiltración potencial</description>
+    <mitre>
+      <id>T1048</id>
+    </mitre>
+    <group>exfiltration,</group>
   </rule>
 
+  <!-- Regla para detección de archivos grandes (simplificada) -->
+  <rule id="100003" level="10">
+    <category>ossec</category>
+    <decoded_as>ossec</decoded_as>
+    <description>Archivo grande modificado o accedido - $(file)</description>
+    <group>exfiltration,</group>
+  </rule>
 </group>
