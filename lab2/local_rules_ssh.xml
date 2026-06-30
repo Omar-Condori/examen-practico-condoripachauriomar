@@ -3,7 +3,7 @@
   <rule id="100001" level="10" frequency="10" timeframe="60">
     <if_matched_sid>5716</if_matched_sid>
     <same_source_ip />
-    <description>Ataque de fuerza bruta SSH detectado desde $(srcip)</description>
+    <description>Ataque de fuerza bruta SSH detectado desde </description>
     <group>authentication_failures,brute_force,</group>
   </rule>
 </group>
