@@ -1,13 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <group name="local,ssh,">
-  <!-- Regla para detección de brute force SSH: 10 intentos fallidos en 60 segundos -->
   <rule id="100001" level="10" frequency="10" timeframe="60">
     <if_matched_sid>5716</if_matched_sid>
     <same_source_ip />
     <description>Ataque de fuerza bruta SSH detectado desde $(srcip)</description>
-    <mitre>
-      <id>T1110</id>
-    </mitre>
     <group>authentication_failures,brute_force,</group>
   </rule>
 </group>
