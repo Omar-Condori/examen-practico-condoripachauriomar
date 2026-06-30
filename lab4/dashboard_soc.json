@@ -1,0 +1,112 @@
+{
+  "attributes": {
+    "title": "SOC - Monitor de Seguridad",
+    "description": "Dashboard de monitoreo de seguridad para el examen práctico",
+    "panelsJSON": [
+      {
+        "gridData": {
+          "x": 0,
+          "y": 0,
+          "w": 24,
+          "h": 6,
+          "i": "panel-1"
+        },
+        "panelIndex": "panel-1",
+        "type": "markdown",
+        "embeddableConfig": {
+          "markdown": "# SOC - Monitor de Seguridad\\n\\n**Autor**: Omar Condori Pachauri"
+        }
+      },
+      {
+        "gridData": {
+          "x": 0,
+          "y": 6,
+          "w": 12,
+          "h": 10,
+          "i": "panel-2"
+        },
+        "panelIndex": "panel-2",
+        "type": "visualization",
+        "embeddableConfig": {
+          "savedVisId": "vertical-bar-alerts-severity",
+          "title": "Alertas por nivel de severidad"
+        }
+      },
+      {
+        "gridData": {
+          "x": 12,
+          "y": 6,
+          "w": 12,
+          "h": 10,
+          "i": "panel-3"
+        },
+        "panelIndex": "panel-3",
+        "type": "visualization",
+        "embeddableConfig": {
+          "savedVisId": "data-table-top-ips",
+          "title": "Top 10 IPs con más alertas"
+        }
+      },
+      {
+        "gridData": {
+          "x": 0,
+          "y": 16,
+          "w": 12,
+          "h": 10,
+          "i": "panel-4"
+        },
+        "panelIndex": "panel-4",
+        "type": "visualization",
+        "embeddableConfig": {
+          "savedVisId": "line-alerts-hourly",
+          "title": "Alertas por hora (últimas 24h)"
+        }
+      },
+      {
+        "gridData": {
+          "x": 12,
+          "y": 16,
+          "w": 12,
+          "h": 10,
+          "i": "panel-5"
+        },
+        "panelIndex": "panel-5",
+        "type": "visualization",
+        "embeddableConfig": {
+          "savedVisId": "pie-alerts-rule-groups",
+          "title": "Distribución por tipo de regla"
+        }
+      }
+    ],
+    "timeRestore": true,
+    "timeFrom": "now-24h",
+    "timeTo": "now",
+    "refreshInterval": {
+      "pause": false,
+      "value": 30000
+    }
+  },
+  "type": "dashboard",
+  "references": [
+    {
+      "name": "panel-2:panel-2",
+      "type": "visualization",
+      "id": "vertical-bar-alerts-severity"
+    },
+    {
+      "name": "panel-3:panel-3",
+      "type": "visualization",
+      "id": "data-table-top-ips"
+    },
+    {
+      "name": "panel-4:panel-4",
+      "type": "visualization",
+      "id": "line-alerts-hourly"
+    },
+    {
+      "name": "panel-5:panel-5",
+      "type": "visualization",
+      "id": "pie-alerts-rule-groups"
+    }
+  ]
+}

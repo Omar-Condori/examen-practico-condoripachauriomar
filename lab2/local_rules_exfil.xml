@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<group name="local,syslog,exfiltration,">
+
+  <!-- Regla para detección de exfiltración de datos (archivos grandes enviados a destinos externos) -->
+  <!-- Monitorea transferencias de archivos mayores a 100MB -->
+  <rule id="100002" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="event.type">^file$</field>
+    <field name="file.size" type="int">^104857600$|^[1-9][0-9]{8,}$</field> <!-- >100MB -->
+    <field name="destination.ip">!^192\.168\.|!^10\.|!^172\.(1[6-9]|2[0-9]|3[01])\.</field> <!-- IP externa -->
+    <description>Exfiltración de datos detectada: Archivo $(file.name) de $(file.size) bytes transferido a $(destination.ip).</description>
+    <mitre>
+      <id>T1048</id> <!-- Exfiltration Over Alternative Protocol -->
+    </mitre>
+    <group>exfiltration,gdpr_IV_32.2,pci_dss_10.2.4,gpg13_7.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <!-- Regla adicional para detección de múltiples conexiones a destinos externos en corto tiempo -->
+  <rule id="100003" level="9" frequency="20" timeframe="60">
+    <decoded_as>json</decoded_as>
+    <field name="event.type">^network$</field>
+    <field name="destination.ip">!^192\.168\.|!^10\.|!^172\.(1[6-9]|2[0-9]|3[01])\.</field>
+    <same_source_ip />
+    <description>Actividad de red sospechosa: $(srcip) ha realizado $(frequency) conexiones a destinos externos en $(timeframe) segundos.</description>
+    <mitre>
+      <id>T1041</id> <!-- Exfiltration Over Command and Control Channel -->
+    </mitre>
+    <group>exfiltration,gdpr_IV_32.2,pci_dss_10.2.4,gpg13_7.1,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+</group>
